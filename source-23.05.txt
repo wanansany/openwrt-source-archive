@@ -1,0 +1,20 @@
+######################
+# 23.05
+#
+#
+# lean-luci(23.05)
+#git clone -b openwrt-23.05 https://github.com/coolsnowwolf/luci.git
+
+# luci-app-alist(23.05)
+#git clone -b main https://github.com/sbwml/luci-app-alist.git
+
+# luci-theme-argon(23.05)
+#git clone -b master https://github.com/jerrykuku/luci-theme-argon.git
+
+# luci-app-argon-config(23.05)
+#git clone -b master https://github.com/jerrykuku/luci-app-argon-config.git
+
+
+
+
+

@@ -1,0 +1,80 @@
+name: archive
+
+run-name: archive source code
+
+on:
+  schedule:
+    - cron: '0 6 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  TMP_FILE: tmp.txt
+  SOURCE_1806: source-18.06.txt
+  SOURCE_2305: source-23.05.txt
+
+jobs:
+  archive:
+    name: archive
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 1.checkout
+        uses: actions/checkout@v2
+
+
+      - name: 2.init env
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git
+          sudo mkdir -p source/18.06
+          sudo mkdir -p source/23.05
+          sudo chmod -R 777 source
+          sudo chown -R $USER:$USER source
+
+      - name: 3.download 18.06 source code
+        working-directory: source/18.06
+        run: |
+          cp -a ${{ github.workspace }}/${{ env.SOURCE_1806 }} ./
+          sed '/^\s*$/d' ${{ env.SOURCE_1806 }} > ${{ env.TMP_FILE }}
+          while read -r line; do if [[ $line =~ ^"#" ]]; then continue; fi; $line; done < ${{ env.TMP_FILE }}
+          rm -rf ${{ env.TMP_FILE }}
+          rm -rf ${{ env.SOURCE_1806 }}
+
+      - name: 4.download 23.05 source code
+        working-directory: source/23.05
+        run: |
+          cp -a ${{ github.workspace }}/${{ env.SOURCE_2305 }} ./
+          sed '/^\s*$/d' ${{ env.SOURCE_2305 }} > ${{ env.TMP_FILE }}
+          while read -r line; do if [[ $line =~ ^"#" ]]; then continue; fi; $line; done < ${{ env.TMP_FILE }}
+          rm -rf ${{ env.TMP_FILE }}
+          rm -rf ${{ env.SOURCE_2305 }}
+
+      - name: 5.organize files
+        id: organize
+        run: |
+          tar -czf source.tar.gz source/
+          rm -rf source/
+          echo "FILEPATH=$PWD/source.tar.gz" >> "$GITHUB_ENV"
+          echo "FILENAME=openwrt-source-$(date +'%Y%m%d')" >> "$GITHUB_ENV"
+          echo "status=success" >> "$GITHUB_OUTPUT"
+
+      #      - name: 6.upload
+      #        uses: actions/upload-artifact@main
+      #        if: steps.organize.outputs.status == 'success'
+      #        with:
+      #          name: ${{ env.FILENAME }}
+      #          path: ${{ env.FILEPATH }}
+      #          compression-level: 9
+      #          retention-days: 7
+      #          if-no-files-found: error
+
+      - name: 6.release
+        uses: softprops/action-gh-release@master
+        with:
+          files: ${{ env.FILEPATH }}
+          tag_name: ${{ env.FILENAME }}
+          body: "openwrt source code archive"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
