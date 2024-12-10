@@ -60,17 +60,18 @@ jobs:
           echo "FILENAME=openwrt-source-$(date +'%Y%m%d')" >> "$GITHUB_ENV"
           echo "status=success" >> "$GITHUB_OUTPUT"
 
-      #      - name: 6.upload
-      #        uses: actions/upload-artifact@main
-      #        if: steps.organize.outputs.status == 'success'
-      #        with:
-      #          name: ${{ env.FILENAME }}
-      #          path: ${{ env.FILEPATH }}
-      #          compression-level: 9
-      #          retention-days: 7
-      #          if-no-files-found: error
+      - name: 6.upload
+        if: steps.organize.outputs.status == 'success'
+        uses: actions/upload-artifact@main
+        with:
+          name: ${{ env.FILENAME }}
+          path: ${{ env.FILEPATH }}
+          compression-level: 9
+          retention-days: 7
+          if-no-files-found: error
 
-      - name: 6.release
+      - name: 7.release
+        if: steps.organize.outputs.status == 'success'
         uses: softprops/action-gh-release@master
         with:
           files: ${{ env.FILEPATH }}
