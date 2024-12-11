@@ -72,7 +72,7 @@ jobs:
 
       - name: 7.release
         if: steps.organize.outputs.status == 'success'
-        uses: softprops/action-gh-release@2
+        uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.FILEPATH }}
           tag_name: ${{ env.FILENAME }}
