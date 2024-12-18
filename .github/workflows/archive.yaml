@@ -1,0 +1,90 @@
+name: Archive
+
+run-name: Archive OpenWrt Source Code
+
+on:
+  schedule:
+    # UTC时间周日 16:30
+    # 北京时间周一 00:30
+    - cron: "30 16 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  TMP_FILE: tmp.txt
+  SOURCE_1806: 18.06.txt
+  SOURCE_2305: 23.05.txt
+  TARGET_1806: 18.06.tgz
+  TARGET_2305: 23.05.tgz
+
+jobs:
+  archive:
+    name: archive job
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 1.checkout
+        uses: actions/checkout@v4
+
+      - name: 2.init env
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git
+          sudo mkdir -p source/18.06
+          sudo mkdir -p source/23.05
+          sudo chmod -R 777 source
+          sudo chown -R $USER:$USER source
+
+      - name: 3.download 18.06 source
+        working-directory: source/18.06
+        run: |
+          cp -a ${{ github.workspace }}/${{ env.SOURCE_1806 }} ./
+          sed '/^\s*$/d' ${{ env.SOURCE_1806 }} > ${{ env.TMP_FILE }}
+          while read -r line; do if [[ $line =~ ^"#" ]]; then continue; fi; $line; done < ${{ env.TMP_FILE }}
+          rm -rf ${{ env.TMP_FILE }}
+          rm -rf ${{ env.SOURCE_1806 }}
+
+      - name: 4.download 23.05 source
+        working-directory: source/23.05
+        run: |
+          cp -a ${{ github.workspace }}/${{ env.SOURCE_2305 }} ./
+          sed '/^\s*$/d' ${{ env.SOURCE_2305 }} > ${{ env.TMP_FILE }}
+          while read -r line; do if [[ $line =~ ^"#" ]]; then continue; fi; $line; done < ${{ env.TMP_FILE }}
+          rm -rf ${{ env.TMP_FILE }}
+          rm -rf ${{ env.SOURCE_2305 }}
+
+      - name: 5.organize files
+        id: organize
+        working-directory: source
+        run: |
+          tar -czf ${{ env.TARGET_1806 }} 18.06/
+          tar -czf ${{ env.TARGET_2305 }} 23.05/
+          rm -rf 18.06/
+          rm -rf 23.05/
+          echo "TAG_NAME=openwrt-source-$(date +'%Y%m%d')" >> "$GITHUB_ENV"
+          echo "status=success" >> "$GITHUB_OUTPUT"
+
+      - name: 6.upload
+        if: steps.organize.outputs.status == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.TAG_NAME }}
+          path: |
+            ${{ github.workspace }}/source/${{ env.TARGET_1806 }}
+            ${{ github.workspace }}/source/${{ env.TARGET_2305 }}
+          compression-level: 9
+          #保留期,默认保留90天
+          #retention-days: 7
+          if-no-files-found: error
+
+      - name: 7.release
+        if: steps.organize.outputs.status == 'success'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          body: "openwrt source code archive"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            ${{ github.workspace }}/source/${{ env.TARGET_1806 }}
+            ${{ github.workspace }}/source/${{ env.TARGET_2305 }}
